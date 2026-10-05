@@ -1,0 +1,24 @@
+deviations:
+  - id: DOCKER-RUN-001
+    why: >-
+      GitLab Omnibus 18.11 and Pi-hole 2026.09 run as root. Their entrypoints
+      fail when every capability is dropped. GitLab also cannot use a read-only
+      root filesystem.
+    epic: HDC-003
+    owner: pirlruc
+    review: 2026-12-31
+  - id: DOCKER-COMPOSE-009
+    why: >-
+      cAdvisor mounts host paths read-only and adds SYS_ADMIN. Rootless BuildKit
+      sets seccomp and AppArmor unconfined, which the upstream image requires.
+      Neither stack mounts the Docker socket into an application container.
+    epic: HDC-003
+    owner: pirlruc
+    review: 2026-12-31
+  - id: DOCKER-COMPOSE-006
+    why: >-
+      Pi-hole publishes DNS port 53 on the LAN address. Clients cannot use a
+      resolver that is bound only to 127.0.0.1. The admin UI stays on loopback.
+    epic: HDC-003
+    owner: pirlruc
+    review: 2026-12-31

@@ -1,0 +1,30 @@
+# Registries stay commented until a Dependabot secret exists.
+# Create DEPENDABOT_GITHUB_TOKEN (Contents: Read on pirlruc/guardrails and
+# pirlruc/github-scaffold) and then uncomment registries for the gitsubmodule entry.
+# See https://github.com/pirlruc/github-scaffold/blob/main/templates/dependabot.example.yml
+
+version: 2
+
+multi-ecosystem-groups:
+  all-dependencies:
+    schedule:
+      interval: monthly
+      time: "06:00"
+      timezone: Europe/Lisbon
+    commit-message:
+      prefix: build
+      include: scope
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    patterns: ["*"]
+    multi-ecosystem-group: all-dependencies
+
+  - package-ecosystem: docker-compose
+    directory: /
+    patterns: ["*"]
+    multi-ecosystem-group: all-dependencies
+    exclude-paths:
+      - docs/guardrails/**
+      - .github/scaffold/**

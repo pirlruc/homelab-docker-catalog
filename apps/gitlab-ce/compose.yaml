@@ -1,0 +1,49 @@
+# GitLab CE omnibus runs as root. Deviation HDC-003 / DOCKER-RUN-001.
+# TLS is terminated by Traefik. GitLab itself speaks HTTP on the published ports.
+
+name: gitlab-ce
+
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:18.11.12-ce.0@sha256:9dc94c49789d1ffec78e1998b088c83d7d1d9d5f2dc8b388cbb2bd2de328dd21
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    shm_size: 256mb
+    mem_limit: 10g
+    pids_limit: 4096
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url '${GITLAB_EXTERNAL_URL:?set GITLAB_EXTERNAL_URL}'
+        registry_external_url '${GITLAB_REGISTRY_EXTERNAL_URL:?set GITLAB_REGISTRY_EXTERNAL_URL}'
+        nginx['listen_port'] = 80
+        nginx['listen_https'] = false
+        letsencrypt['enable'] = false
+        registry['enable'] = true
+        registry_nginx['listen_port'] = 5050
+        registry_nginx['listen_https'] = false
+        gitlab_rails['registry_enabled'] = true
+        prometheus_monitoring['enable'] = false
+        gitlab_kas['enable'] = false
+        puma['worker_processes'] = 2
+        sidekiq['max_concurrency'] = 10
+        postgresql['shared_buffers'] = "256MB"
+    ports:
+      - ${BIND_ADDRESS:?set BIND_ADDRESS}:80:80
+      - ${BIND_ADDRESS:?set BIND_ADDRESS}:22:22
+      - ${BIND_ADDRESS:?set BIND_ADDRESS}:5050:5050
+    volumes:
+      - config:/etc/gitlab
+      - logs:/var/log/gitlab
+      - data:/var/opt/gitlab
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/-/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 480s
+
+volumes:
+  config: {}
+  logs: {}
+  data: {}

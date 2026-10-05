@@ -1,0 +1,7 @@
+# Fleet-gitops replaces this file. It must stay valid YAML.
+# Routers belong here, not in the compose file, so Traefik never mounts the Docker socket.
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      sniStrict: true

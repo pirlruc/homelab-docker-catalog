@@ -1,0 +1,46 @@
+# HTTP mode is implemented in gitlab-mcp 0.2.0. The digest below is 0.1.0,
+# which speaks stdio only. Replace it when 0.2.0 is published. Until then
+# this stack is not part of the default smoke.
+
+name: gitlab-mcp
+
+services:
+  gitlab-mcp:
+    image: pirlruc/gitlab-mcp:0.1.0@sha256:9df623d5351c9c544177a3b71db93d7ceae5f96afe89df39fa0fb876b5fa4b8e
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    mem_limit: 256m
+    pids_limit: 128
+    environment:
+      GITLAB_URL: ${GITLAB_URL:?set GITLAB_URL}
+      GITLAB_READ_ONLY: ${GITLAB_READ_ONLY:?set GITLAB_READ_ONLY}
+      GITLAB_TOKEN_FILE: /run/secrets/gitlab
+      MCP_TRANSPORT: streamable-http
+      MCP_HTTP_HOST: 0.0.0.0
+      MCP_HTTP_PORT: "3333"
+      MCP_AUTH_TOKEN_FILE: /run/secrets/mcp
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:?set MCP_ALLOWED_HOSTS}
+      MCP_ALLOWED_ORIGINS: ${MCP_ALLOWED_ORIGINS:?set MCP_ALLOWED_ORIGINS}
+    ports:
+      - ${BIND_ADDRESS:?set BIND_ADDRESS}:3333:3333
+    volumes:
+      - type: bind
+        source: ${GITLAB_TOKEN_FILE:?set GITLAB_TOKEN_FILE}
+        target: /run/secrets/gitlab
+        read_only: true
+      - type: bind
+        source: ${MCP_AUTH_TOKEN_FILE:?set MCP_AUTH_TOKEN_FILE}
+        target: /run/secrets/mcp
+        read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3333/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

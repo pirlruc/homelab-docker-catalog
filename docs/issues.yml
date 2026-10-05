@@ -1,0 +1,144 @@
+# Authored backlog for homelab-docker-catalog.
+#
+# Schema: https://github.com/pirlruc/github-scaffold/blob/main/docs/issues-schema.md
+# Methodology: https://github.com/pirlruc/methodologies/tree/1.8.0/github-issue-adr
+
+milestones:
+  - name: Phase 1 — Catalog
+    epics:
+      - id: HDC-001
+        status: open
+        title: Publish the Compose catalog
+        overview:
+          problem: >-
+            Homelab stacks were split across gitlab-server and home-assistant,
+            with floating tags, docker.sock mounts, and secrets in env defaults.
+          goal: >-
+            One public catalog of Compose stacks. Images are digest-pinned.
+            Every variable uses a required interpolation. No secret is committed.
+        decision: >-
+          In the context of a public homelab catalog, facing stacks that mixed
+          secrets and floating tags, we decided digest pins and required
+          interpolation with TLS terminated by a shared Traefik file provider,
+          to achieve stacks that can be cloned without a secret, accepting that
+          fleet-gitops renders the env files and the Traefik routes.
+        out_of_scope:
+          - Proxmox provisioning
+          - SOPS secrets
+        architecture:
+          target: apps/
+          modules:
+            - apps/reverse-proxy
+            - apps/dns-core
+            - apps/vaultwarden
+            - apps/gitlab-ce
+            - apps/buildkit
+            - apps/gitlab-mcp
+            - apps/ollama
+            - apps/defectdojo
+            - apps/sonarqube-trivy
+            - apps/observability
+            - apps/cadvisor
+        acceptance_criteria:
+          - docker compose config succeeds for every app with tests/*.env
+          - No compose file contains a literal password
+          - gitlab-mcp HTTP digest is replaced when 0.2.0 is published
+        guardrail_refs:
+          - DOCKER-COMPOSE-001
+          - DOCKER-COMPOSE-004
+          - DOCKER-COMPOSE-005
+        tasks:
+          - id: HDC-001-T1
+            status: open
+            title: Replace the gitlab-mcp digest when 0.2.0 is published
+            instructions:
+              files:
+                - apps/gitlab-mcp/compose.yaml
+            verification:
+              - docker compose --env-file tests/gitlab-mcp.env -f apps/gitlab-mcp/compose.yaml config
+            guardrail_refs:
+              - DOCKER-COMPOSE-001
+
+      - id: HDC-003
+        status: open
+        title: Record the catalog guardrail deviations
+        overview:
+          problem: >-
+            GitLab Omnibus, Pi-hole, cAdvisor, BuildKit, and LAN DNS cannot meet
+            every Compose rule without breaking the service.
+          goal: >-
+            Each exception is one entry in docs/guardrail-deviations.yml with a
+            review date. No other service uses the exception.
+        decision: >-
+          In the context of third-party images that need root, host paths, or a
+          LAN DNS port, facing rules written for apps we build, we decided to
+          record three deviations and keep every other service on the default,
+          to achieve a catalog that still cites the pack, accepting a review
+          on 2026-12-31.
+        architecture:
+          target: docs/guardrail-deviations.yml
+          modules:
+            - docs/guardrail-deviations.yml
+        acceptance_criteria:
+          - DOCKER-RUN-001, DOCKER-COMPOSE-009, and DOCKER-COMPOSE-006 each have one entry
+          - Each entry names epic HDC-003
+        guardrail_refs:
+          - DOCKER-RUN-001
+          - DOCKER-COMPOSE-009
+          - DOCKER-COMPOSE-006
+        tasks:
+          - id: HDC-003-T1
+            status: open
+            title: Re-review the three deviations
+            instructions:
+              files:
+                - docs/guardrail-deviations.yml
+            verification:
+              - each review date is still in the future or the entry is removed
+            guardrail_refs:
+              - DOCKER-COMPOSE-009
+
+      - id: HDC-004
+        status: open
+        title: Call the ops reusable workflows
+        overview:
+          problem: >-
+            A catalog can render Compose and still ship a broken container.
+            container-iac validates config and KICS. It does not boot a stack.
+            commondevops has no compose smoke workflow yet (CDO-SMOKE-001).
+          goal: >-
+            CI calls container-iac and the commondevops lint, secrets, and
+            supply-chain workflows at pinned SHAs. A local job boots Traefik
+            and Vaultwarden. Heavier stacks stay on workflow_dispatch.
+        decision: >-
+          In the context of a public catalog, facing reusable workflows that
+          validate config but do not boot, we decided to call the workflows that
+          exist and boot only the two light stacks in CI, to achieve a gate
+          without a private runner, accepting that GitLab and DefectDojo are
+          not booted on every pull request.
+        out_of_scope:
+          - Implementing CDO-SMOKE-001
+        architecture:
+          target: .github/workflows/ci.yml
+          modules:
+            - .github/workflows/ci.yml
+            - scripts/check-ci-local.sh
+        acceptance_criteria:
+          - container-iac and common-secrets-sast are pinned by full SHA
+          - scripts_ref equals the uses pin
+          - The pull request job boots reverse-proxy and vaultwarden
+        guardrail_refs:
+          - CI-018
+          - CI-034
+          - DOCKER-LINT-002
+        tasks:
+          - id: HDC-004-T1
+            status: open
+            title: Move the boot check to container-compose-smoke when it exists
+            instructions:
+              files:
+                - .github/workflows/ci.yml
+            verification:
+              - the job calls containerdevops container-compose-smoke.yml
+            guardrail_refs:
+              - CI-019

@@ -1,0 +1,76 @@
+# Pi-hole with a recursive Unbound resolver. The router stays the DHCP server.
+# Unbound has no published port (DOCKER-COMPOSE-010).
+
+name: dns-core
+
+services:
+  unbound:
+    image: mvance/unbound:1.22.0@sha256:76906da36d1806f3387338f15dcf8b357c51ce6897fb6450d6ce010460927e90
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only: true
+    mem_limit: 256m
+    pids_limit: 128
+    volumes:
+      - ./config/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
+    networks:
+      - dns
+    healthcheck:
+      test: ["CMD", "drill", "-o", "NO", "-Q", "@127.0.0.1", "example.com"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  pihole:
+    image: pihole/pihole:2026.09.0@sha256:5b9c8cf51de7d6d3f2240dbe72baf5f06e1fd39cb4d77a99fab4fa13e23bd1be
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - FOWNER
+      - KILL
+    mem_limit: 512m
+    pids_limit: 256
+    environment:
+      TZ: ${TZ:?set TZ}
+      FTLCONF_webserver_api_password: ${FTLCONF_webserver_api_password:?set the Pi-hole password}
+      FTLCONF_dns_upstreams: unbound#53
+      FTLCONF_dns_listeningMode: SINGLE
+    ports:
+      # DNS must answer on the LAN address. DOCKER-COMPOSE-006 deviation HDC-003.
+      - ${BIND_ADDRESS:?set BIND_ADDRESS}:53:53/udp
+      - ${BIND_ADDRESS:?set BIND_ADDRESS}:53:53/tcp
+      - 127.0.0.1:8080:80/tcp
+    volumes:
+      - pihole:/etc/pihole
+    networks:
+      - dns
+    depends_on:
+      unbound:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "dig", "+time=2", "+tries=1", "@127.0.0.1", "pi.hole"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+# Not internal: Unbound must reach the public DNS root.
+networks:
+  dns: {}
+
+volumes:
+  pihole: {}

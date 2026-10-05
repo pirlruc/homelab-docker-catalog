@@ -1,0 +1,6 @@
+# Fleet-gitops replaces this file before the pve profile starts.
+# The values below are placeholders and will not authenticate.
+default:
+  user: exporter@pam
+  password: replace-me
+  verify_ssl: false

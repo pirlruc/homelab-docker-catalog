@@ -1,0 +1,33 @@
+# Rootless BuildKit. seccomp and AppArmor stay unconfined because the
+# rootless worker needs the host to allow user namespaces. Deviation HDC-003
+# against DOCKER-COMPOSE-009. The Docker socket is not mounted.
+
+name: buildkit
+
+services:
+  buildkit:
+    image: moby/buildkit:v0.33.1-rootless@sha256:f8a833b2de9d68e27f0815e4a737abdfaf8a2e4c615650557df11025101557b4
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+      - apparmor:unconfined
+    cap_drop:
+      - ALL
+    mem_limit: 4g
+    pids_limit: 2048
+    environment:
+      BUILDKITD_FLAGS: --addr tcp://0.0.0.0:1234 --oci-worker-no-process-sandbox
+    ports:
+      - ${BIND_ADDRESS:?set BIND_ADDRESS}:1234:1234
+    volumes:
+      - data:/home/user/.local/share/buildkit
+    healthcheck:
+      test: ["CMD", "buildctl", "--addr", "tcp://127.0.0.1:1234", "debug", "workers"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  data: {}

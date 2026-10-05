@@ -1,0 +1,27 @@
+name: ollama
+
+services:
+  ollama:
+    image: ollama/ollama:0.35.1@sha256:292ee7945dfc3d5840a181f3ab86fedb1e66703e02c8af98b50f4da56b7e278c
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 6g
+    pids_limit: 512
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+    ports:
+      - ${BIND_ADDRESS:?set BIND_ADDRESS}:11434:11434
+    volumes:
+      - data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  data: {}

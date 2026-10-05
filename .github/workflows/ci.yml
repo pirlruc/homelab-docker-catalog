@@ -1,0 +1,96 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  compose-config:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Render every stack
+        run: bash scripts/check-ci-local.sh
+
+  smoke-light:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Boot Traefik and Vaultwarden
+        run: |
+          set -euo pipefail
+          docker compose --env-file tests/reverse-proxy.env -f apps/reverse-proxy/compose.yaml up -d --wait
+          docker compose --env-file tests/vaultwarden.env -f apps/vaultwarden/compose.yaml up -d --wait
+      - name: Remove stacks
+        if: always()
+        run: |
+          docker compose --env-file tests/reverse-proxy.env -f apps/reverse-proxy/compose.yaml down -v
+          docker compose --env-file tests/vaultwarden.env -f apps/vaultwarden/compose.yaml down -v
+
+  iac:
+    if: github.actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: write
+    uses: pirlruc/containerdevops/.github/workflows/container-iac.yml@d524167752fd34f60326b07e10d6c400eb2fc9a7
+    with:
+      paths: apps
+      compose_files: |
+        apps/reverse-proxy/compose.yaml
+        apps/dns-core/compose.yaml
+        apps/vaultwarden/compose.yaml
+        apps/gitlab-ce/compose.yaml
+        apps/buildkit/compose.yaml
+        apps/gitlab-mcp/compose.yaml
+        apps/ollama/compose.yaml
+        apps/defectdojo/compose.yaml
+        apps/sonarqube-trivy/compose.yaml
+        apps/observability/compose.yaml
+        apps/cadvisor/compose.yaml
+      kics_config: .github/kics.config
+      scripts_ref: d524167752fd34f60326b07e10d6c400eb2fc9a7
+      blocking: true
+
+  infra-lint:
+    if: github.actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+    uses: pirlruc/commondevops/.github/workflows/common-infra-lint.yml@8897e9df4dadfc5234eafbbf041e9c552fd8c1e3
+    with:
+      shell_scripts: scripts/check-ci-local.sh
+      scripts_ref: 8897e9df4dadfc5234eafbbf041e9c552fd8c1e3
+      blocking: true
+
+  secrets:
+    if: github.actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+    uses: pirlruc/commondevops/.github/workflows/common-secrets-sast.yml@8897e9df4dadfc5234eafbbf041e9c552fd8c1e3
+    with:
+      scripts_ref: 8897e9df4dadfc5234eafbbf041e9c552fd8c1e3
+      blocking: true
+
+  supply-chain:
+    if: github.actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: write
+    uses: pirlruc/commondevops/.github/workflows/common-supply-chain.yml@8897e9df4dadfc5234eafbbf041e9c552fd8c1e3
+    with:
+      scripts_ref: 8897e9df4dadfc5234eafbbf041e9c552fd8c1e3
+      blocking: true

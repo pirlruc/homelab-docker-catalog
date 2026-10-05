@@ -1,0 +1,37 @@
+# cAdvisor reads host paths. Deviation HDC-003 against DOCKER-COMPOSE-009.
+# The Docker socket is not mounted. /var/run is mounted because cAdvisor
+# reads container state from that directory.
+
+name: cadvisor
+
+services:
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1@sha256:3cde6faf0791ebf7b41d6f8ae7145466fed712ea6f252c935294d2608b1af388
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_ADMIN
+      - DAC_READ_SEARCH
+    mem_limit: 256m
+    pids_limit: 256
+    command:
+      - --housekeeping_interval=30s
+      - --docker_only=true
+      - --listen_ip=0.0.0.0
+      - --port=8080
+    ports:
+      - ${BIND_ADDRESS:?set BIND_ADDRESS}:8080:8080
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

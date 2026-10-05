@@ -1,0 +1,208 @@
+# DefectDojo 3.4.0. The broker is Valkey, which is what that release ships.
+# Redis protocol URLs stay redis:// because Valkey speaks that protocol.
+
+name: defectdojo
+
+x-django-env: &django-env
+  DD_DATABASE_URL: postgresql://${DD_DATABASE_USER:?set DD_DATABASE_USER}:${DD_DATABASE_PASSWORD:?set DD_DATABASE_PASSWORD}@postgres:5432/${DD_DATABASE_NAME:?set DD_DATABASE_NAME}
+  DD_CELERY_BROKER_URL: redis://valkey:6379/0
+  DD_CACHE_URL: redis://valkey:6379/1
+  DD_SECRET_KEY: ${DD_SECRET_KEY:?set DD_SECRET_KEY}
+  DD_CREDENTIAL_AES_256_KEY: ${DD_CREDENTIAL_AES_256_KEY:?set DD_CREDENTIAL_AES_256_KEY}
+  DD_DATABASE_READINESS_TIMEOUT: "30"
+
+services:
+  postgres:
+    image: postgres:18.6-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETUID
+      - SETGID
+    mem_limit: 1g
+    pids_limit: 256
+    environment:
+      POSTGRES_DB: ${DD_DATABASE_NAME:?set DD_DATABASE_NAME}
+      POSTGRES_USER: ${DD_DATABASE_USER:?set DD_DATABASE_USER}
+      POSTGRES_PASSWORD: ${DD_DATABASE_PASSWORD:?set DD_DATABASE_PASSWORD}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  valkey:
+    image: valkey/valkey:9.1.2-alpine@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    mem_limit: 256m
+    pids_limit: 128
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    volumes:
+      - valkey:/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  initializer:
+    image: defectdojo/defectdojo-django:3.4.0@sha256:b7d5e1de22fe865e594ec3c75f97ab58cbff834700fd6a4e9d86f73b49ed4d67
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    pids_limit: 256
+    environment:
+      <<: *django-env
+      DD_ADMIN_USER: ${DD_ADMIN_USER:?set DD_ADMIN_USER}
+      DD_ADMIN_PASSWORD: ${DD_ADMIN_PASSWORD:?set DD_ADMIN_PASSWORD}
+      DD_ADMIN_MAIL: ${DD_ADMIN_MAIL:?set DD_ADMIN_MAIL}
+      DD_ADMIN_FIRST_NAME: Admin
+      DD_ADMIN_LAST_NAME: User
+      DD_INITIALIZE: "true"
+    entrypoint: ["/wait-for-it.sh", "postgres:5432", "-t", "30", "--", "/entrypoint-initializer.sh"]
+    networks:
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  uwsgi:
+    image: defectdojo/defectdojo-django:3.4.0@sha256:b7d5e1de22fe865e594ec3c75f97ab58cbff834700fd6a4e9d86f73b49ed4d67
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 2g
+    pids_limit: 512
+    environment:
+      <<: *django-env
+      DD_ALLOWED_HOSTS: ${DD_ALLOWED_HOSTS:?set DD_ALLOWED_HOSTS}
+      DD_DEBUG: "False"
+    entrypoint: ["/wait-for-it.sh", "postgres:5432", "-t", "30", "--", "/entrypoint-uwsgi.sh"]
+    volumes:
+      - media:/app/media
+    networks:
+      - data
+      - edge
+    depends_on:
+      initializer:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 3031), 2).close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  celeryworker:
+    image: defectdojo/defectdojo-django:3.4.0@sha256:b7d5e1de22fe865e594ec3c75f97ab58cbff834700fd6a4e9d86f73b49ed4d67
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 2g
+    pids_limit: 512
+    environment:
+      <<: *django-env
+    entrypoint: ["/wait-for-it.sh", "postgres:5432", "-t", "30", "--", "/entrypoint-celery-worker.sh"]
+    volumes:
+      - media:/app/media
+    networks:
+      - data
+    depends_on:
+      initializer:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f celery || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  celerybeat:
+    image: defectdojo/defectdojo-django:3.4.0@sha256:b7d5e1de22fe865e594ec3c75f97ab58cbff834700fd6a4e9d86f73b49ed4d67
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    pids_limit: 256
+    environment:
+      <<: *django-env
+    entrypoint: ["/wait-for-it.sh", "postgres:5432", "-t", "30", "--", "/entrypoint-celery-beat.sh"]
+    networks:
+      - data
+    depends_on:
+      initializer:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f celery || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  nginx:
+    image: defectdojo/defectdojo-nginx:3.4.0@sha256:9d9595c5b20cc8efaf1c36bafb24f8a9b44b37023d11835c82462be6de2c09c5
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 128m
+    pids_limit: 64
+    environment:
+      DD_UWSGI_HOST: uwsgi
+      DD_UWSGI_PORT: "3031"
+    ports:
+      - 127.0.0.1:8082:8080
+    volumes:
+      - media:/usr/share/nginx/html/media:ro
+    networks:
+      - edge
+    depends_on:
+      uwsgi:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/login"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+# data is not internal: celery must reach vulnerability feeds.
+networks:
+  data: {}
+  edge: {}
+
+volumes:
+  postgres: {}
+  valkey: {}
+  media: {}

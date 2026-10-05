@@ -1,0 +1,55 @@
+# Traefik v3 with the file provider. No Docker socket (DOCKER-COMPOSE-009).
+# Fleet-gitops renders config/dynamic.yml per host. This file only sets TLS defaults.
+
+name: reverse-proxy
+
+services:
+  traefik:
+    image: traefik:v3.7.13@sha256:24841fe2de7304c149343d877d2923b4c8800a38ba015dea9174c23b20e344a0
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only: true
+    mem_limit: 256m
+    pids_limit: 256
+    environment:
+      DNS_PROVIDER: ${DNS_PROVIDER:?set DNS_PROVIDER to the Traefik DNS-01 provider name}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN:?set the DNS provider token}
+    command:
+      - --global.checkNewVersion=false
+      - --global.sendAnonymousUsage=false
+      - --ping=true
+      - --ping.entrypoint=traefik
+      - --entrypoints.traefik.address=127.0.0.1:8080
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      - --api.dashboard=false
+      - --certificatesresolvers.le.acme.dnschallenge=true
+      - --certificatesresolvers.le.acme.dnschallenge.provider=${DNS_PROVIDER:?set DNS_PROVIDER}
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL:?set ACME_EMAIL}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --log.level=INFO
+    ports:
+      - ${BIND_ADDRESS:?set BIND_ADDRESS}:80:80
+      - ${BIND_ADDRESS:?set BIND_ADDRESS}:443:443
+    volumes:
+      - ./config:/etc/traefik/dynamic:ro
+      - letsencrypt:/letsencrypt
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  letsencrypt: {}
