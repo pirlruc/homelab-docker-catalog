@@ -1,0 +1,5 @@
+title = "homelab-docker-catalog"
+
+[allowlist]
+description = "Smoke env files contain placeholders, not credentials."
+paths = ['''tests/.*\.env''', '''apps/.*/\.env\.example''']
