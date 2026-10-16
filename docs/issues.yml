@@ -198,3 +198,55 @@ milestones:
             guardrail_refs:
               - INFRA-DR-002
               - INFRA-DR-003
+
+      - id: HDC-006
+        status: open
+        title: Restore compose validation in the iac caller
+        overview:
+          problem: >-
+            The iac caller hands every stack to container-iac, which renders each
+            compose file with no env file and then passes the same entries to
+            check-compose-gates.sh as plain paths. The catalog fails closed on a
+            missing variable and keeps .env out of the repository, so the job
+            fails on every pull request and DOCKER-LINT-003 plus the
+            DOCKER-COMPOSE-001/002/005/006/007 gates are not evaluated in CI.
+            containerdevops CDO-IAC-001 (issue #163) owns the upstream fix.
+          goal: >-
+            iac renders every stack with tests/*.env again, and the recorded
+            deviation is withdrawn.
+        decision: >-
+          In the context of a catalog that must not ship a secret, facing a
+          reusable workflow that cannot render a fail-closed compose file, we
+          decided to keep the caller, record one deviation, and accept a red iac
+          job until CDO-IAC-001 lands, to achieve a truthful record instead of a
+          weakened compose file, accepting that the compose gates stay unenforced
+          in CI in the meantime.
+        out_of_scope:
+          - Weakening a compose file so it renders without its variables
+          - Implementing CDO-IAC-001 in containerdevops
+        architecture:
+          target: .github/workflows/ci.yml
+          modules:
+            - .github/workflows/ci.yml
+            - docs/guardrail-deviations.yml
+        acceptance_criteria:
+          - The iac job renders every stack with tests/*.env
+          - The DOCKER-LINT-003 deviation is removed once containerdevops adds an env-file input
+        guardrail_refs:
+          - DOCKER-LINT-003
+          - DOCKER-COMPOSE-001
+          - DOCKER-COMPOSE-002
+          - DOCKER-COMPOSE-005
+          - DOCKER-COMPOSE-007
+        tasks:
+          - id: HDC-006-T1
+            status: open
+            title: Point the iac caller at the containerdevops env-file input
+            instructions:
+              files:
+                - .github/workflows/ci.yml
+                - docs/guardrail-deviations.yml
+            verification:
+              - the iac job renders every stack with tests/*.env
+            guardrail_refs:
+              - DOCKER-LINT-003

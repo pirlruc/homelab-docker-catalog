@@ -7,6 +7,8 @@ What has actually been run, as of 2026-10-16.
 | Every stack renders | workstation | tested | `docker compose --env-file tests/<app>.env -f apps/<app>/compose.yaml config` | — |
 | CI parity script | workstation | tested | `bash scripts/check-ci-local.sh` | — |
 | Doc links | workstation | tested | `python3 scripts/lint-doc-links.py` | Run it with the virtualenv outside the repository root |
+| Markdown lint | workstation | tested | `npx markdownlint-cli2 "**/*.md" "#**/node_modules" "#**/.github/scaffold"` | — |
+| CI gates | GitHub Actions | partial | `gh run view --repo pirlruc/homelab-docker-catalog` | Every job is green except `iac`, which cannot render a fail-closed compose file. HDC-006 and containerdevops CDO-IAC-001 own the fix; the DOCKER-LINT-003 deviation records it. |
 | reverse-proxy and vaultwarden boot | workstation | blocked | `docker compose --env-file tests/reverse-proxy.env -f apps/reverse-proxy/compose.yaml up -d --wait` | Needs the image pull to finish |
 | dns-core boot | VM 101 | blocked | — | Needs a host where port 53 is free |
 | gitlab-ce, defectdojo, sonarqube-trivy boot | VM 200, VM 300 | not tested | — | Outside the 12 GB test budget; see `homelab-infra-tofu/docs/test-status.md` |

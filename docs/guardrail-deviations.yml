@@ -27,6 +27,21 @@ deviations:
     epic: HDC-003
     owner: pirlruc
     review: 2026-12-31
+  - id: DOCKER-LINT-003
+    why: >-
+      The iac job cannot validate a rendered configuration. container-iac runs
+      "docker compose -f FILE config --quiet" with no env file and then passes
+      the same entries to check-compose-gates.sh, which requires a path to an
+      existing file. Every stack fails closed on a missing variable (${VAR:?})
+      and .env stays out of the repository, so the job fails on every pull
+      request, and the DOCKER-COMPOSE-001/002/005/006/007 gates that ride on the
+      same step do not run in CI either. scripts/check-ci-local.sh still renders
+      every stack with tests/*.env and KICS still scans apps/. containerdevops
+      CDO-IAC-001 (issue #163) owns the fix.
+    epic: HDC-006
+    owner: pirlruc
+    review: 2026-12-31
+    details: .github/workflows/ci.yml
   - id: INFRA-DR-002
     why: >-
       stack_backup and vzdump both write to the machine they protect, so no copy
