@@ -1,8 +1,8 @@
 # Operations — observability, backup and recovery
 
 The stacks in this repository define state, so this file states the
-observability and recovery position for them. Guardrail references point at
-[`docs/guardrails/`](guardrails/).
+observability and recovery position for them. Guardrail references point at the
+`docs/guardrails/` submodule.
 
 ## Observability
 
