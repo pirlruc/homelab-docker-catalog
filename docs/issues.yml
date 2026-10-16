@@ -142,3 +142,59 @@ milestones:
               - the job calls containerdevops container-compose-smoke.yml
             guardrail_refs:
               - CI-019
+
+      - id: HDC-005
+        status: open
+        title: Make the alert path real and restore a backup
+        overview:
+          problem: >-
+            Alertmanager routes to a default receiver with no integration, so an
+            alert is accepted and dropped, and no alerting rules are loaded
+            (INFRA-OBS-003). stack_backup writes to /var/backups/stacks on the
+            same guest it protects and keeps 14 days, and no restore has been run
+            (INFRA-DR-002, INFRA-DR-003).
+          goal: >-
+            An alert reaches a destination the operator reads, and a restore from
+            a second copy is recorded.
+        decision: >-
+          In the context of a single-node lab, facing alerts with no destination
+          and backups on the failing host, we decided to state the position in
+          docs/operations.md and record three deviations rather than imply
+          coverage, to achieve an honest baseline, accepting local-only backups
+          until the operator picks a target.
+        architecture:
+          target: docs/operations.md
+          modules:
+            - apps/observability/config/alertmanager.yml
+            - docs/operations.md
+        acceptance_criteria:
+          - alertmanager.yml names a receiver with a real integration
+          - a test alert arrives at that receiver
+          - a restore from the second copy is recorded in docs/test-status.md
+        guardrail_refs:
+          - INFRA-OBS-003
+          - INFRA-DR-002
+          - INFRA-DR-003
+        tasks:
+          - id: HDC-005-T1
+            status: open
+            title: Configure an Alertmanager receiver and one alerting rule
+            instructions:
+              files:
+                - apps/observability/config/alertmanager.yml
+                - apps/observability/config/prometheus.yml
+            verification:
+              - a test alert reaches the receiver
+            guardrail_refs:
+              - INFRA-OBS-003
+          - id: HDC-005-T2
+            status: open
+            title: Add an off-host backup target and record a restore
+            instructions:
+              files:
+                - docs/operations.md
+            verification:
+              - a restore from the second copy is recorded in docs/test-status.md
+            guardrail_refs:
+              - INFRA-DR-002
+              - INFRA-DR-003

@@ -9,12 +9,17 @@ deviations:
     review: 2026-12-31
   - id: DOCKER-COMPOSE-009
     why: >-
-      cAdvisor mounts host paths read-only and adds SYS_ADMIN. Rootless BuildKit
-      sets seccomp and AppArmor unconfined, which the upstream image requires.
-      Neither stack mounts the Docker socket into an application container.
+      cAdvisor mounts /var/run, /sys, / and /var/lib/docker read-only and adds
+      SYS_ADMIN, which collecting host container stats requires; DAC_READ_SEARCH
+      comes with the same image. It is the only service in the catalog that
+      mounts /var/run, and it does not mount /var/run/docker.sock, which
+      DOCKER-COMPOSE-009 otherwise treats as equivalent. Rootless BuildKit sets
+      seccomp and AppArmor unconfined, which the upstream image requires. No
+      application container mounts the Docker socket.
     epic: HDC-003
     owner: pirlruc
     review: 2026-12-31
+    details: apps/cadvisor/compose.yaml
   - id: DOCKER-COMPOSE-006
     why: >-
       Pi-hole publishes DNS port 53 on the LAN address. Clients cannot use a
@@ -22,3 +27,29 @@ deviations:
     epic: HDC-003
     owner: pirlruc
     review: 2026-12-31
+  - id: INFRA-DR-002
+    why: >-
+      stack_backup and vzdump both write to the machine they protect, so no copy
+      leaves the host. The backup target is a consumer choice the operator has
+      not made yet.
+    epic: HFG-OFFSITE
+    owner: pirlruc
+    review: 2026-12-31
+    details: docs/operations.md
+  - id: INFRA-DR-003
+    why: >-
+      No restore has been run from any backup, because no guest is up yet. The
+      first restore test is part of HFG-OFFSITE.
+    epic: HFG-OFFSITE
+    owner: pirlruc
+    review: 2026-12-31
+    details: docs/operations.md
+  - id: INFRA-OBS-003
+    why: >-
+      Alertmanager routes to a default receiver with no integration, so an alert
+      is accepted and dropped, and no alerting rules are loaded. No destination
+      credentials exist yet.
+    epic: HDC-005
+    owner: pirlruc
+    review: 2026-12-31
+    details: docs/operations.md

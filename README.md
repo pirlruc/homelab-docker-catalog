@@ -34,6 +34,23 @@ This repo does not store secrets and does not decrypt them. Fleet-gitops renders
 `/opt/stacks/<app>/.env` mode `0600` from SOPS. Compose reads that file. A missing
 variable fails the stack instead of starting with a default.
 
+## Operations
+
+[`docs/operations.md`](docs/operations.md) states the exporter binding,
+retention and alert-path position (INFRA-OBS-001 to INFRA-OBS-003) and the
+backup RPO, RTO and restore position (INFRA-DR-001 to INFRA-DR-003), including
+which volumes hold state.
+
+## Pins
+
+| Submodule | Pin |
+|-----------|-----|
+| `docs/guardrails` | tag 1.11.0 |
+| `.github/scaffold` | tag 1.9.0 |
+
+CI calls containerdevops `6.2.1` (`d5241677…`) and commondevops `5.3.4`
+(`98549af7…`).
+
 ## Check
 
 ```bash
