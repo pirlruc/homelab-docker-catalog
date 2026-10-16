@@ -1,0 +1,30 @@
+# Mirrors the org reference config in pirlruc/heimdall: all rules default on
+# with MD013 (line length), MD033 (inline HTML), MD041 (first-line heading),
+# and MD060 (table column style) disabled.
+#
+# The ignores below are generated, synced, or vendored rather than hand-written:
+# .agents/skills/, .github/ISSUE_TEMPLATE/, .github/pull_request_template.md,
+# AGENTS.md, CLAUDE.md, and SKILLS.md come from .github/scaffold/scripts;
+# docs/guardrails/ and vendor/ are pinned submodules; .terraform/ is provider
+# cache. common-doc-verify passes **/*.md on the command line, which overrides
+# globs, so generated trees have to be excluded here instead.
+config:
+  default: true
+  MD013: false
+  MD033: false
+  MD041: false
+  MD060: false
+globs:
+  - "docs/**/*.md"
+  - "README.md"
+ignores:
+  - ".agents/skills/**"
+  - ".github/ISSUE_TEMPLATE/**"
+  - ".github/pull_request_template.md"
+  - ".github/scaffold/**"
+  - "**/.terraform/**"
+  - "AGENTS.md"
+  - "CLAUDE.md"
+  - "SKILLS.md"
+  - "docs/guardrails/**"
+  - "vendor/**"

@@ -64,4 +64,4 @@ The Dependabot jobs gate on `github.event.pull_request.user.login`, not on
 - `feat(scaffold)`: pin guardrails 1.11.0 and scaffold 1.9.0.
 - `docs`: state the observability and recovery position, and record the three unmet guardrails as deviations.
 
-*Last updated: 2026-10-16*
+*Last updated: 2026-10-16 — guardrails 1.11.0 alignment, the observability and recovery position, and the CI gate fixes.*
