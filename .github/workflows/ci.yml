@@ -43,7 +43,7 @@ jobs:
           docker compose --env-file tests/vaultwarden.env -f apps/vaultwarden/compose.yaml down -v
 
   iac:
-    if: github.actor != 'dependabot[bot]'
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: write
@@ -65,32 +65,68 @@ jobs:
       kics_config: .github/kics.config
       scripts_ref: d524167752fd34f60326b07e10d6c400eb2fc9a7
       blocking: true
+    secrets:
+      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
 
   infra-lint:
-    if: github.actor != 'dependabot[bot]'
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     permissions:
       contents: read
-    uses: pirlruc/commondevops/.github/workflows/common-infra-lint.yml@8897e9df4dadfc5234eafbbf041e9c552fd8c1e3
+    uses: pirlruc/commondevops/.github/workflows/common-infra-lint.yml@98549af765da30ca714a35de66842166f3a1488b
     with:
       shell_scripts: scripts/check-ci-local.sh
-      scripts_ref: 8897e9df4dadfc5234eafbbf041e9c552fd8c1e3
+      run_shfmt: true
+      scripts_ref: 98549af765da30ca714a35de66842166f3a1488b
       blocking: true
+    secrets:
+      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
 
   secrets:
-    if: github.actor != 'dependabot[bot]'
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     permissions:
       contents: read
-    uses: pirlruc/commondevops/.github/workflows/common-secrets-sast.yml@8897e9df4dadfc5234eafbbf041e9c552fd8c1e3
+    uses: pirlruc/commondevops/.github/workflows/common-secrets-sast.yml@98549af765da30ca714a35de66842166f3a1488b
     with:
-      scripts_ref: 8897e9df4dadfc5234eafbbf041e9c552fd8c1e3
+      scripts_ref: 98549af765da30ca714a35de66842166f3a1488b
       blocking: true
+    secrets:
+      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
 
   supply-chain:
-    if: github.actor != 'dependabot[bot]'
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: write
-    uses: pirlruc/commondevops/.github/workflows/common-supply-chain.yml@8897e9df4dadfc5234eafbbf041e9c552fd8c1e3
+    uses: pirlruc/commondevops/.github/workflows/common-supply-chain.yml@98549af765da30ca714a35de66842166f3a1488b
     with:
-      scripts_ref: 8897e9df4dadfc5234eafbbf041e9c552fd8c1e3
+      scripts_ref: 98549af765da30ca714a35de66842166f3a1488b
       blocking: true
+    secrets:
+      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
+
+  doc-verify:
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+    uses: pirlruc/commondevops/.github/workflows/common-doc-verify.yml@98549af765da30ca714a35de66842166f3a1488b
+    with:
+      run_link_lint: true
+      run_markdownlint: true
+      scripts_ref: 98549af765da30ca714a35de66842166f3a1488b
+      blocking: true
+    secrets:
+      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
+
+  # lychee reaches the network, so it stays advisory: a flaky upstream link must
+  # not fail the gate. DOC-LINT-004 still reports it on every pull request.
+  doc-links-live:
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+    uses: pirlruc/commondevops/.github/workflows/common-doc-verify.yml@98549af765da30ca714a35de66842166f3a1488b
+    with:
+      run_lychee: true
+      scripts_ref: 98549af765da30ca714a35de66842166f3a1488b
+      blocking: false
+    secrets:
+      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
