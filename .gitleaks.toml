@@ -1,0 +1,8 @@
+title = "homelab-docker-catalog"
+
+# The tests/*.env files carry placeholders so a stack can be rendered and
+# smoke-tested locally; they hold no credential. The fleet renders the real
+# values, and .gitignore keeps any real .env out of the repository.
+[allowlist]
+description = "Smoke env files contain placeholders, not credentials."
+paths = ['''tests/.*\.env''', '''apps/.*/\.env\.example''']
