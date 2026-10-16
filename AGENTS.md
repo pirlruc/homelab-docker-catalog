@@ -20,6 +20,9 @@ the same text. Other agents apply a skill when its description matches.
 - [dependency-updates](.agents/skills/dependency-updates/SKILL.md)
 - [supply-chain-artifacts](.agents/skills/supply-chain-artifacts/SKILL.md)
 - [release-publish](.agents/skills/release-publish/SKILL.md)
+- [ansible-roles](.agents/skills/ansible-roles/SKILL.md)
+- [opentofu-iac](.agents/skills/opentofu-iac/SKILL.md)
+- [sops-secrets](.agents/skills/sops-secrets/SKILL.md)
 
 ## Always-on rules
 
@@ -333,7 +336,7 @@ issue text by hand.
 
 Field definitions: [guardrails deviation rule](https://github.com/pirlruc/guardrails#deviation-rule).
 Process and approval flow:
-[guardrail-compliance.md](https://github.com/pirlruc/methodologies/blob/1.8.0/github-issue-adr/docs/process/guardrail-compliance.md).
+[guardrail-compliance.md](https://github.com/pirlruc/methodologies/blob/1.9.0/github-issue-adr/docs/process/guardrail-compliance.md).
 
 ## Related
 
@@ -344,7 +347,7 @@ Process and approval flow:
 
 # github-issue-adr methodology
 
-[github-issue-adr](https://github.com/pirlruc/methodologies/tree/1.8.0/github-issue-adr) is the methodology for every
+[github-issue-adr](https://github.com/pirlruc/methodologies/tree/1.9.0/github-issue-adr) is the methodology for every
 repo carrying this scaffold. Do not introduce a second decision-record format alongside it.
 
 ## Core model
